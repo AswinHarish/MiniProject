@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Clear Dues</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <style>
+        body {
+            font-family: 'Poppins', sans-serif;
+            background-color: #f4f7f6;
+            display: flex;
+            height: 100vh;
+            margin: 0;
+        }
+
+        .content {
+            flex: 1;
+            padding: 40px;
+            margin-left: 250px; /* Adjusting for sidebar */
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+        }
+
+        p {
+            font-size: 16px;
+            color: white;
+            margin-bottom: 20px;
+            width: 100%;
+        }
+
+        .table-container {
+            width: 80%;
+            max-width: 1000px;
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+            color: black;
+        }
+
+        th {
+            background-color: #007bff;
+            color: white;
+            text-transform: uppercase;
+            font-weight: bold;
+        }
+
+        tr:nth-child(even) {
+            background-color: #f8f9fa;
+        }
+
+        tr:hover {
+            background-color: #e3f2fd;
+            transition: 0.3s ease-in-out;
+        }
+
+        .clear-btn {
+            background-color: #dc3545;
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            cursor: pointer;
+            border-radius: 5px;
+        }
+
+        .clear-btn:hover {
+            background-color: #c82333;
+        }
+
+        @media (max-width: 768px) {
+            .table-container {
+                width: 95%;
+            }
+
+            th, td {
+                font-size: 14px;
+                padding: 8px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="sidebar">
+        <h2>Welcome, {{ admin_name }}</h2>
+        <ul>
+            <li><a href="{{ url_for('admin_dashboard') }}">Dashboard</a></li>
+            <li><a href="{{ url_for('add_due') }}">Add Dues</a></li>
+            <li><a href="{{ url_for('clear_due') }}">Clear Dues</a></li>
+            <li><a href="{{ url_for('logout') }}">Logout</a></li>
+        </ul>
+    </div>
+    
+    <div class="content">
+        <p>Below are the dues added by you ({{ admin_role | capitalize }})</p>
+    
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Admission No</th>
+                        <th>Student Name</th>
+                        <th>Branch</th>
+                        <th>Phone</th>
+                        <th>Amount</th>
+                        <th>Remarks</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for due in dues %}
+                    <tr>
+                        <td>{{ due['AdmnNo'] }}</td>
+                        <td>{{ due['student_name'] }}</td>
+                        <td>{{ due['Branch'] }}</td>
+                        <td>{{ due['Phone'] }}</td>
+                        <td>₹{{ due['DueAmount'] }}</td>
+                        <td>{{ due['Remarks'] }}</td>
+                        <td>
+                            <form action="{{ url_for('clear_due') }}" method="post" style="display:inline;">
+                                <input type="hidden" name="admn_no" value="{{ due['AdmnNo'] }}">
+                                <button type="submit" class="clear-btn">Clear</button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>            
+        </div>
+    </div>
+</body>
+</html>

@@ -71,13 +71,42 @@ def admin_login():
 
     return render_template('admin_login.html')
 
-# Route: Admin Dashboard (For Regular Admins)
+# Route: Admin Dashboard
 @app.route('/admin_dashboard')
 def admin_dashboard():
     if 'admin_id' not in session:
         flash("Please log in first!", "warning")
         return redirect(url_for('admin_login'))
-    return "Welcome to Admin Dashboard"
+
+    db = get_db_connection()
+    db.row_factory = sqlite3.Row  # Fetch results as dictionaries
+    cursor = db.cursor()
+
+    # Fetch admin details
+    cursor.execute("SELECT name, role FROM Admin WHERE id = ?", (session['admin_id'],))
+    admin = cursor.fetchone()
+
+    if not admin:
+        flash("Admin not found!", "danger")
+        return redirect(url_for('admin_login'))
+
+    admin_name = admin['name']
+    admin_role = admin['role']  # This corresponds to DueDept in Dues table
+
+    # Fetch dues with student details
+    cursor.execute("""
+        SELECT s.AdmnNo, s.Name AS student_name, s.Branch, s.Phone, 
+               d.DueAmount, d.Remarks   
+        FROM Dues d
+        JOIN students s ON d.AdmnNo = s.AdmnNo
+        WHERE d.DueDept = ?
+        ORDER BY d.AdmnNo
+    """, (admin_role,))
+
+    dues = cursor.fetchall()
+    db.close()
+
+    return render_template('admin_dashboard.html', admin_name=admin_name, admin_role=admin_role, dues=dues)
 
 # Route: Principal Dashboard (For Adding New Admins)
 @app.route('/principal', methods=['GET', 'POST'])
@@ -99,7 +128,7 @@ def principal_dashboard():
 
     return render_template('principal_dashboard.html', principal_name=principal['name'], admins=admins)
 
-
+# Route:  Add Admin
 @app.route('/add_admin', methods=['GET', 'POST'])
 def add_admin():
     if 'role' not in session or session['role'] != 'principal':
@@ -127,6 +156,7 @@ def add_admin():
 
     return render_template('add_admin.html', principal_name=principal['name'])
 
+# Route: Remove Admin
 @app.route('/remove_admin', methods=['GET', 'POST'])
 def remove_admin():
     if 'role' not in session or session['role'] != 'principal':
@@ -166,7 +196,101 @@ def delete_admin(admin_id):
     db.close()
     return redirect(url_for('remove_admin'))
 
+# Route: Add Due
+@app.route('/add_due', methods=['GET', 'POST'])
+def add_due():
+    if 'admin_id' not in session:
+        flash("Please log in first!", "warning")
+        return redirect(url_for('admin_login'))
+    
+    db = get_db_connection()
+    cursor = db.cursor()
+    
+    # Fetch admin role
+    cursor.execute("SELECT * FROM Admin WHERE id = ?", (session['admin_id'],))
+    admin = cursor.fetchone()
+    
+    if not admin:
+        flash("Unauthorized access!", "danger")
+        return redirect(url_for('admin_dashboard'))
+    
+    admin_role = admin['role']  # The department they belong to
+    admin_name = admin['name']
+    
+    if request.method == 'POST':
+        admn_no = request.form['admn_no']
+        due_amount = request.form['due_amount']
+        remarks = request.form['remarks']
+        
+        # Fetch student details
+        cursor.execute("SELECT Name, Branch, Phone FROM Students WHERE AdmnNo = ?", (admn_no,))
+        student = cursor.fetchone()
 
+        if student:
+            # Insert into Dues table
+            cursor.execute(
+                "INSERT INTO Dues (AdmnNo, Name, Branch, Phone, DueAmount, DueDept, Remarks) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                (admn_no, student['Name'], student['Branch'], student['Phone'], due_amount, admin_role, remarks)
+            )
+            db.commit()
+            flash("Due added successfully!", "success")
+        else:
+            flash("Student not found!", "danger")
+
+        db.close()
+        return redirect(url_for('add_due'))
+
+    db.close()
+    return render_template('add_due.html', admin_role=admin_role, admin_name=admin_name)
+
+# Route: Clear Due
+@app.route('/clear_due', methods=['GET', 'POST'])
+def clear_due():
+    if 'admin_id' not in session:
+        flash("Please log in first!", "warning")
+        return redirect(url_for('admin_login'))
+
+    db = get_db_connection()
+    cursor = db.cursor()
+
+    # Fetch admin details
+    cursor.execute("SELECT name, role FROM Admin WHERE id = ?", (session['admin_id'],))
+    admin = cursor.fetchone()
+
+    if not admin:
+        flash("Admin not found!", "danger")
+        return redirect(url_for('admin_login'))
+    
+    admin_name = admin['name']
+    admin_role = admin['role']  # This corresponds to DueDept in Dues table
+    
+    if request.method == 'POST':
+        admn_no = request.form.get('admn_no')
+        
+        # Check if due exists and is added by the current admin role
+        cursor.execute("SELECT * FROM Dues WHERE AdmnNo = ? AND DueDept = ?", (admn_no, admin_role))
+        due = cursor.fetchone()
+        
+        if due:
+            cursor.execute("DELETE FROM Dues WHERE AdmnNo = ? AND DueDept = ?", (admn_no, admin_role))
+            db.commit()
+            flash("Due cleared successfully!", "success")
+        else:
+            flash("No such due found or unauthorized action!", "danger")
+        
+    # Fetch all dues added by the logged-in admin
+    cursor.execute("""
+        SELECT s.AdmnNo, s.Name AS student_name, s.Branch, s.Phone, d.DueAmount, d.Remarks   
+        FROM Dues d
+        JOIN students s ON d.AdmnNo = s.AdmnNo
+        WHERE d.DueDept = ?
+        ORDER BY d.AdmnNo
+    """, (admin_role,))
+    
+    dues = cursor.fetchall()
+    db.close()
+    
+    return render_template('clear_due.html', admin_name=admin_name, admin_role=admin_role, dues=dues)
 
 # Route: Logout (For Both Students & Admins)
 @app.route('/logout')
