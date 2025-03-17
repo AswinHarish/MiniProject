@@ -1,17 +1,20 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard</title>
     <link rel="stylesheet" href="static/styles.css">
 </head>
+
 <body>
     <div class="dashboard-container">
         <div class="sidebar">
             <h3>Welcome, {{ student['Name'] }}</h3>
             <ul>
-                <li><a href="https://formbuilder.ccavenue.com/live/kotak-mahindra/kmct-group-of-institutions-2/kmct-college-of-engineering-2", target="_blank">Fee Payment</a></li>
+                <li><a href="https://formbuilder.ccavenue.com/live/kotak-mahindra/kmct-group-of-institutions-2/kmct-college-of-engineering-2"
+                        , target="_blank">Fee Payment</a></li>
                 <li><a href="{{ url_for('dashboard') }}">Dashboard</a></li>
                 <li><a href="{{ url_for('logout') }}" class="logout">Logout</a></li>
             </ul>
@@ -31,25 +34,31 @@
                     <p><strong>Hostel:</strong> {{ 'Yes' if student['Hostel'] else 'No' }}</p>
                 </div>
             </div>
-            
+
             <div class="side-section">
                 <div class="notifications">
                     <h2>Notifications</h2>
                     <ul>
                         {% for notification in notifications %}
-                            <li>{{ notification }}</li>
+                        <li>{{ notification }}</li>
                         {% else %}
-                            <li>No new notifications</li>
+                        <li>No new notifications</li>
                         {% endfor %}
                     </ul>
                 </div>
-                <br> 
+                <br>
+                {% if is_registration_open %}
                 <div class="registration">
-                    <h2>S6 Registration is Open</h2>
-                    <button class="regbtn">Register</button>
+                    <h2>S{{ sem }} Registration is Open</h2>
+                    <a href="{{ url_for('registration') }}">
+                        <button class="regbtn">Register</button>
+                    </a>
                 </div>
+                {% endif %}
+
             </div>
         </div>
     </div>
 </body>
+
 </html>

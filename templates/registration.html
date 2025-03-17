@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard</title>
+    <link rel="stylesheet" href="static/styles.css">
+</head>
+<style>
+    body {
+        font-family: 'Poppins', sans-serif;
+        background-color: #f4f7f6;
+        display: flex;
+        height: 100vh;
+        margin: 0;
+    }
+
+    .content {
+        flex: 1;
+        padding: 40px;
+        margin-left: 250px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+    }
+
+    .table-container {
+        width: 100%;
+        max-width: 1400px;
+        margin: 20px auto;
+        background: white;
+        padding: 20px;
+        border-radius: 12px;
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+        overflow-x: auto;
+    }
+
+    .table-title {
+        text-align: center;
+        margin-bottom: 10px;
+        font-size: 18px;
+        font-weight: bold;
+        color: #333;
+    }
+
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        text-align: left;
+    }
+
+    th,
+    td {
+        padding: 12px;
+        border-bottom: 1px solid #ddd;
+        color: black;
+    }
+
+    th {
+        background-color: #007bff;
+        color: white;
+        text-transform: uppercase;
+        font-weight: bold;
+    }
+
+    tr:nth-child(even) {
+        background-color: #f8f9fa;
+    }
+
+    tr:hover {
+        background-color: #eef5ff;
+        transition: 0.3s;
+    }
+
+    .status.no-due {
+        color: green;
+        font-weight: bold;
+    }
+
+    .amount {
+        font-weight: bold;
+        color: red;
+    }
+
+    .submit-btn {
+        background-color: #28a745;
+        color: white;
+        padding: 12px 20px;
+        border: none;
+        border-radius: 22px;
+        font-size: 16px;
+        cursor: pointer;
+        margin-top: 20px;
+        display: block;
+        text-align: center;
+        margin-left: auto;
+        margin-right: auto;
+    }
+
+    .submit-btn:hover {
+        background-color: #218838;
+    }
+
+    @media (max-width: 768px) {
+        .table-container {
+            width: 95%;
+        }
+
+        th,
+        td {
+            font-size: 14px;
+            padding: 8px;
+            color: black;
+        }
+    }
+</style>
+
+<body>
+    <div class="dashboard-container">
+        <div class="sidebar">
+            <h3>Welcome, {{ student['Name'] }}</h3>
+            <ul>
+                <li><a href="https://formbuilder.ccavenue.com/live/kotak-mahindra/kmct-group-of-institutions-2/kmct-college-of-engineering-2"
+                        target="_blank">Fee Payment</a></li>
+                <li><a href="{{ url_for('dashboard') }}">Dashboard</a></li>
+                <li><a href="{{ url_for('logout') }}" class="logout">Logout</a></li>
+            </ul>
+        </div>
+
+        <div class="content">
+            <div class="container">
+                <h2 class="text-center">Student Dues</h2>
+
+                <div class="table-container">
+                    <h3 class="table-title">Cleared Dues ✅</h3>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Department</th>
+                                <th>Staff Name</th>
+                                <th>Staff Email</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% if no_dues_departments %}
+                            {% for dept in no_dues_departments %}
+                            <tr>
+                                <td>{{ dept.DueDept }}</td>
+                                <td>{{ dept.StaffName }}</td>
+                                <td>{{ dept.StaffEmail }}</td>
+                                <td class="status no-due">✔ No Due</td>
+                            </tr>
+                            {% endfor %}
+                            {% else %}
+                            <tr>
+                                <td colspan="4" class="text-center">No departments found.</td>
+                            </tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+
+                {% if registration_submitted %}
+                <p><strong>Waiting for HOD approval</strong></p>
+                {% else %}
+                {% if pending_dues %}
+                <div class="table-container">
+                    <h3 class="table-title">Pending Dues ⚠️</h3>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Department</th>
+                                <th>Staff Name</th>
+                                <th>Staff Email</th>
+                                <th>Due Amount</th>
+                                <th>Remarks</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for due in pending_dues %}
+                            <tr>
+                                <td>{{ due.DueDept }}</td>
+                                <td>{{ due.StaffName }}</td>
+                                <td>{{ due.StaffEmail }}</td>
+                                <td class="amount">₹{{ due.DueAmount }}</td>
+                                <td>{{ due.Remarks }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                {% if not registration_submitted %}
+                <p>You have cleared all the dues!!</p>
+                <p>Your registration will be completed once it is approved by HOD</p>
+                <form method="POST" action="{{ url_for('submit_registration') }}">
+                    <button type="submit" class="submit-btn">Submit</button>
+                </form>
+                {% else %}
+                <p><strong>Waiting for HOD approval</strong></p>
+                {% endif %}
+                {% endif %}
+                {% endif %}
+
+            </div>
+        </div>
+    </div>
+
+
+</body>
+
+</html>

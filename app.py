@@ -39,12 +39,33 @@ def dashboard():
     if 'AdmnNo' in session:
         admn_no = session['AdmnNo']
         conn = get_db_connection()
+
+        # Fetch student details, including their current semester
         student = conn.execute('SELECT * FROM Students WHERE AdmnNo = ?', (admn_no,)).fetchone()
+
+        if not student:
+            flash("Student not found!", "danger")
+            return redirect(url_for('home'))
+
+        student_semester = student['Sem']  # Fetch the student's current semester
+        next_semester = student_semester + 1  # Determine next semester
+
+        # Fetch registration status for the next semester
+        registration_settings = conn.execute('SELECT IsOpen FROM RegistrationStatus WHERE Semester = ?', (next_semester,)).fetchone()
+
         conn.close()
-        return render_template('dashboard.html', student=student)
+
+        # Determine if registration should be displayed
+        is_registration_open = registration_settings['IsOpen'] if registration_settings else 0
+
+        return render_template('dashboard.html', student=student, is_registration_open=is_registration_open, sem=next_semester)
+    
     else:
         flash("Please log in first!", "warning")
         return redirect(url_for('home'))
+
+
+
 
 # Route: Admin Login
 @app.route('/admin', methods=['GET', 'POST'])
@@ -291,6 +312,102 @@ def clear_due():
     db.close()
     
     return render_template('clear_due.html', admin_name=admin_name, admin_role=admin_role, dues=dues)
+
+# route to update the registration status
+@app.route('/update_registration', methods=['POST'])
+def update_registration():
+    if 'role' not in session or session['role'] != 'principal':
+        flash("Unauthorized access!", "danger")
+        return redirect(url_for('admin_login'))
+
+    semester = request.form.get('semester')
+    is_open = 1 if 'is_open' in request.form else 0  # Checkbox handling
+
+    db = get_db_connection()
+    cursor = db.cursor()
+    cursor.execute("""
+        INSERT INTO RegistrationStatus (Semester, IsOpen) 
+        VALUES (?, ?) 
+        ON CONFLICT(Semester) DO UPDATE SET IsOpen=excluded.IsOpen
+    """, (semester, is_open))
+    db.commit()
+    db.close()
+
+    flash(f"Registration for S{semester} {'enabled' if is_open else 'disabled'}!", "success")
+    return redirect(url_for('principal_dashboard'))
+
+# Route for registration
+@app.route('/registration', methods=['GET', 'POST'])
+def registration():
+    if 'AdmnNo' not in session:
+        flash("Please log in first!", "warning")
+        return redirect(url_for('home'))
+
+    admn_no = session['AdmnNo']
+    conn = get_db_connection()
+
+    # Fetch student details
+    student = conn.execute("SELECT * FROM Students WHERE AdmnNo = ?", (admn_no,)).fetchone()
+    
+    if not student:
+        flash("Student not found!", "danger")
+        return redirect(url_for('home'))
+
+    student = dict(student)
+
+    # Fetch all departments from Admin table (excluding Principal and HOD)
+    all_departments = conn.execute("""
+        SELECT role AS DueDept, name AS StaffName, email AS StaffEmail 
+        FROM Admin 
+        WHERE role NOT IN ('principal', 'hod')
+    """).fetchall()
+    all_departments = [dict(row) for row in all_departments]
+
+    # Fetch student's pending dues
+    pending_dues = conn.execute("SELECT DueDept, DueAmount, Remarks FROM Dues WHERE AdmnNo = ?", (admn_no,)).fetchall()
+    pending_dues = [dict(row) for row in pending_dues]
+
+    due_depts = {due['DueDept'] for due in pending_dues}
+
+    # Separate cleared dues departments
+    no_dues_departments = [dept for dept in all_departments if dept['DueDept'] not in due_depts]
+
+    # Join staff details to pending dues
+    for due in pending_dues:
+        staff = next((dept for dept in all_departments if dept['DueDept'] == due['DueDept']), {})
+        due['StaffName'] = staff.get('StaffName', 'Unknown')
+        due['StaffEmail'] = staff.get('StaffEmail', 'Unknown')
+
+    # Check if student has already submitted registration
+    completed_registration = conn.execute("SELECT 1 FROM CompletedRegistration WHERE AdmnNo = ?", (admn_no,)).fetchone()
+
+    conn.close()
+
+    return render_template(
+        'registration.html', 
+        student=student, 
+        no_dues_departments=no_dues_departments, 
+        pending_dues=pending_dues,
+        registration_submitted=bool(completed_registration)
+    )
+
+# Submit registration
+@app.route('/submit_registration', methods=['POST'])
+def submit_registration():
+    if 'AdmnNo' not in session:
+        flash("Please log in first!", "warning")
+        return redirect(url_for('home'))
+
+    admn_no = session['AdmnNo']
+    conn = get_db_connection()
+
+    # Insert into CompletedRegistration if not already submitted
+    conn.execute("INSERT INTO CompletedRegistration (AdmnNo) SELECT ? WHERE NOT EXISTS (SELECT 1 FROM CompletedRegistration WHERE AdmnNo = ?)", (admn_no, admn_no))
+    conn.commit()
+    conn.close()
+
+    flash("Registration request submitted! Waiting for HOD approval.", "info")
+    return redirect(url_for('registration'))
 
 # Route: Logout (For Both Students & Admins)
 @app.route('/logout')

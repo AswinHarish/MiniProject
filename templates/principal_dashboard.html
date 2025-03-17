@@ -5,82 +5,99 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Principal Dashboard</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
-    <style>
-        body {
-            font-family: 'Poppins', sans-serif;
-            background-color: #f4f7f6;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            margin: 0;
-        }
-    
-        .main-content {
-            flex: 1;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            padding-left: 250px; /* Ensure it doesn't overlap with sidebar */
-            width: 100%;
-        }
-    
-        .container {
-            background: #ffffff;
-            padding: 25px;
-            border-radius: 12px;
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
-            width: 400px;
-            text-align: center;
-        }
-    
-        h2 {
-            color: #222;
-            font-size: 24px;
-            font-weight: 600;
-        }
-    
-        .mb-3 {
-            margin-bottom: 15px;
-            text-align: left;
-        }
-    
-        label {
-            font-size: 14px;
-            font-weight: 500;
-            display: block;
-            margin-bottom: 5px;
-        }
-    
-        input, textarea {
-            width: 100%;
-            padding: 10px;
-            border: 1px solid #ccc;
-            border-radius: 6px;
-            font-size: 14px;
-        }
-    
-        .btn {
-            display: inline-block;
-            padding: 12px 20px;
-            font-size: 16px;
-            font-weight: bold;
-            color: white;
-            background-color: #007bff;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            text-decoration: none;
-            transition: 0.3s;
-            width: 100%;
-        }
-    
-        .btn:hover {
-            background-color: #0056b3;
-        }
-    </style>
-    
 </head>
+<style>
+    body {
+        font-family: Arial, sans-serif;
+        background-color: #2d3e63;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding-top: 20px;
+    }
+    .container {
+        background: #ffffff;
+        padding: 30px;
+        border-radius: 12px;
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+        width: 700px;
+        text-align: center;
+    }
+    h2 {
+        margin-bottom: 20px;
+        color: #333;
+    }
+    .table-container {
+        overflow-x: auto;
+        border-radius: 8px;
+        box-shadow: 0 3px 6px rgba(0, 0, 0, 0.1);
+        width: 100%;
+    }
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 15px;
+        border-radius: 8px;
+        overflow: hidden;
+    }
+    th, td {
+        padding: 12px;
+        text-align: center;
+        color: black;
+        border-bottom: 1px solid #ddd;
+    }
+    th {
+        background-color: #007bff;
+        color: white;
+        font-weight: bold;
+    }
+    tr:nth-child(even) {
+        background-color: #f9f9f9;
+    }
+    tr:hover {
+        background-color: #f1f1f1;
+        transition: 0.3s;
+    }
+    .form-container {
+        background: #ffffff;
+        padding: 30px;
+        border-radius: 12px;
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+        width: 700px;
+        text-align: center;
+        margin-top: 30px; /* Creates space between the two sections */
+    }
+    .form-container h2 {
+        color: #333;
+        margin-bottom: 15px;
+    }
+    label {
+        font-size: 14px;
+        color: #333;
+        margin-right: 5px;
+    }
+    input[type="number"] {
+        padding: 8px;
+        border-radius: 5px;
+        border: 1px solid #ccc;
+        width: 50px;
+        text-align: center;
+    }
+    .btn1 {
+        display: block;
+        margin: 15px auto;
+        padding: 10px 20px;
+        background-color: #007bff;
+        color: white;
+        border: none;
+        border-radius: 43px;
+        cursor: pointer;
+        width: 15%;
+    }
+    .btn:hover {
+        background-color: #0056b3;
+    }
+</style>
 <body>
     <div class="sidebar">
         <h3>Welcome, {{ principal_name }}</h3>
@@ -91,9 +108,11 @@
             <li><a href="{{ url_for('logout') }}" class="logout">Logout</a></li>
         </ul>
     </div>
+
+    <!-- Admin List Section -->
     <div class="container">
         <h2>Admin List</h2>
-        
+
         <div class="table-container">
             <table>
                 <tr>
@@ -109,9 +128,26 @@
                     <td>{{ admin.email }}</td>
                     <td>{{ admin.role }}</td>
                 </tr>
+                {% else %}
+                <tr>
+                    <td colspan="4" style="text-align: center;">No admins found</td>
+                </tr>
                 {% endfor %}
             </table>
         </div>
     </div>
+
+    <!-- Separate Section for Update Registration -->
+    <div class="form-container">
+        <h2>Enable/Disable Registration</h2>
+        <form action="{{ url_for('update_registration') }}" method="post">
+            <label for="semester">Semester :</label>
+            <input type="number" name="semester" id="semester" required> <br>
+            <label for="is_open">Enable </label>
+            <input type="checkbox" name="is_open" id="is_open">
+            <button type="submit" class="btn1">Update</button>
+        </form>
+    </div>
+
 </body>
 </html>
