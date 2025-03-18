@@ -1,5 +1,6 @@
 import sqlite3
 from flask import Flask, render_template, request, redirect, url_for, session, flash
+from datetime import datetime
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'your_secret_key'  # Change this to a secure key
@@ -64,9 +65,6 @@ def dashboard():
         flash("Please log in first!", "warning")
         return redirect(url_for('home'))
 
-
-
-
 # Route: Admin Login
 @app.route('/admin', methods=['GET', 'POST'])
 def admin_login():
@@ -85,12 +83,61 @@ def admin_login():
 
             if admin['role'] == 'principal':
                 return redirect(url_for('principal_dashboard'))
+            elif admin['role'] == 'hod':
+                return redirect(url_for('registeredStudents'))
             else:
                 return redirect(url_for('admin_dashboard'))
         else:
             flash("Invalid email or password!", "danger")
 
     return render_template('admin_login.html')
+
+# Route: hod dashboard
+@app.route('/registeredStudents')
+def registeredStudents():
+    if 'admin_id' not in session:
+        flash("Please log in first!", "warning")
+        return redirect(url_for('admin_login'))
+
+    db = get_db_connection()
+    db.row_factory = sqlite3.Row  # Fetch results as dictionaries
+    cursor = db.cursor()
+
+    # Fetch admin details
+    cursor.execute("SELECT name, role FROM Admin WHERE id = ?", (session['admin_id'],))
+    admin = cursor.fetchone()
+
+    if not admin:
+        flash("Admin not found!", "danger")
+        return redirect(url_for('admin_login'))
+
+    admin_name = admin['name']
+
+    # Fetch students who have completed registration with 'Accepted' status
+    cursor.execute("""
+        SELECT s.Name, s.AdmnNo, s.Sem, s.UniReg, s.Phone, c.SubmittedAt
+        FROM completedregistration c
+        JOIN Students s ON c.AdmnNo = s.AdmnNo
+        WHERE c.Status = 'Approved'
+    """)
+    
+    students = cursor.fetchall()
+
+    # Format the 'SubmittedAt' date
+    formatted_students = []
+    for student in students:
+        formatted_students.append({
+            "Name": student["Name"],
+            "AdmnNo": student["AdmnNo"],
+            "Sem": student["Sem"],
+            "UniReg": student["UniReg"],
+            "Phone": student["Phone"],
+            "SubmittedAt": datetime.strptime(student["SubmittedAt"], '%Y-%m-%d %H:%M:%S').strftime('%d-%m-%Y %I:%M %p')
+        })
+
+    db.close()
+
+    return render_template('registeredStudents.html', hod_name=admin_name, students=formatted_students)
 
 # Route: Admin Dashboard
 @app.route('/admin_dashboard')
@@ -321,7 +368,11 @@ def update_registration():
         return redirect(url_for('admin_login'))
 
     semester = request.form.get('semester')
-    is_open = 1 if 'is_open' in request.form else 0  # Checkbox handling
+    is_open = request.form.get('is_open')  # Get value from radio buttons
+
+    if is_open not in ['0', '1']:  # Ensure valid input
+        flash("Invalid selection!", "danger")
+        return redirect(url_for('principal_dashboard'))
 
     db = get_db_connection()
     cursor = db.cursor()
@@ -333,8 +384,9 @@ def update_registration():
     db.commit()
     db.close()
 
-    flash(f"Registration for S{semester} {'enabled' if is_open else 'disabled'}!", "success")
+    flash(f"Registration for S{semester} {'enabled' if is_open == '1' else 'disabled'}!", "success")
     return redirect(url_for('principal_dashboard'))
+
 
 # Route for registration
 @app.route('/registration', methods=['GET', 'POST'])
@@ -408,6 +460,67 @@ def submit_registration():
 
     flash("Registration request submitted! Waiting for HOD approval.", "info")
     return redirect(url_for('registration'))
+
+#route: pending request
+@app.route('/pending_request')
+def pending_request():
+    if 'admin_id' not in session:
+        flash("Please log in first!", "warning")
+        return redirect(url_for('admin_login'))
+
+    db = get_db_connection()
+    db.row_factory = sqlite3.Row
+    cursor = db.cursor()
+
+    # Fetch pending registration requests (status NOT 'Approved')
+    cursor.execute("""
+        SELECT s.Name, s.AdmnNo, s.Sem, s.UniReg, s.Phone, c.Status, c.SubmittedAt
+        FROM completedregistration c
+        JOIN Students s ON c.AdmnNo = s.AdmnNo
+        WHERE c.Status IS NULL OR c.Status != 'Approved'
+    """)
+    
+    pending_students = cursor.fetchall()
+
+    # Format SubmittedAt for display
+    formatted_students = []
+    for student in pending_students:
+        formatted_students.append({
+            "Name": student["Name"],
+            "AdmnNo": student["AdmnNo"],
+            "Sem": student["Sem"],
+            "UniReg": student["UniReg"],
+            "Phone": student["Phone"],
+            "Status": student["Status"] if student["Status"] else "Pending",
+            "SubmittedAt": datetime.strptime(student["SubmittedAt"], '%Y-%m-%d %H:%M:%S').strftime('%d-%m-%Y %I:%M %p')
+        })
+
+    db.close()
+    
+    return render_template('pending_request.html', students=formatted_students)
+
+#Route: Approving by hod
+@app.route('/approve_registration/<admn_no>', methods=['POST'])
+def approve_registration(admn_no):
+    if 'admin_id' not in session:
+        flash("Please log in first!", "warning")
+        return redirect(url_for('admin_login'))
+
+    db = get_db_connection()
+    cursor = db.cursor()
+
+    # Update status to 'Approved' in completedregistration table
+    cursor.execute("UPDATE completedregistration SET Status = 'Approved' WHERE AdmnNo = ?", (admn_no,))
+
+    # Update semester in Students table
+    cursor.execute("UPDATE Students SET Sem = Sem + 1 WHERE AdmnNo = ?", (admn_no,))
+
+    db.commit()
+    db.close()
+
+    flash("Registration approved successfully! Student moved to the next semester.", "success")
+    return redirect(url_for('pending_request'))
+
 
 # Route: Logout (For Both Students & Admins)
 @app.route('/logout')

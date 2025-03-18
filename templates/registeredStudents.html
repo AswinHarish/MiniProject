@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Registered Students</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<style>
+    body {
+        font-family: Arial, sans-serif;
+        background-color: #2d3e63;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding-top: 20px;
+    }
+    .container {
+        background: #ffffff;
+        padding: 30px;
+        border-radius: 12px;
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+        width: 880px;
+        text-align: center;
+    }
+    h2 {
+        margin-bottom: 20px;
+        color: #333;
+    }
+    .table-container {
+        overflow-x: auto;
+        border-radius: 8px;
+        box-shadow: 0 3px 6px rgba(0, 0, 0, 0.1);
+        width: 100%;
+    }
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 15px;
+        border-radius: 8px;
+        overflow: hidden;
+    }
+    th, td {
+        padding: 12px;
+        text-align: center;
+        color: black;
+        border-bottom: 1px solid #ddd;
+    }
+    th {
+        background-color: #007bff;
+        color: white;
+        font-weight: bold;
+    }
+    tr:nth-child(even) {
+        background-color: #f9f9f9;
+    }
+    tr:hover {
+        background-color: #f1f1f1;
+        transition: 0.3s;
+    }
+</style>
+<body>
+    <div class="sidebar">
+        <h3>Welcome, {{ hod_name }}</h3>
+        <ul>
+            <li><a href="{{ url_for('pending_request') }}">Pending Requests</a></li>
+            <li><a href="{{ url_for('registeredStudents') }}">Dashboard</a></li>
+            <li><a href="{{ url_for('logout') }}" class="logout">Logout</a></li>
+        </ul>
+    </div>
+
+    <div class="container">
+        <div class="table-container">
+            <h2>Registered Students</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Admission No</th>
+                        <th>Semester</th>
+                        <th>University Reg</th>
+                        <th>Phone</th>
+                        <th>Submitted At</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for student in students %}
+                    <tr>
+                        <td>{{ student.Name }}</td>
+                        <td>{{ student.AdmnNo }}</td>
+                        <td>{{ student.Sem }}</td>
+                        <td>{{ student.UniReg }}</td>
+                        <td>{{ student.Phone }}</td>
+                        <td>{{ student.SubmittedAt }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>        
+    </div>
+</body>
+</html>

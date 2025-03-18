@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -15,6 +16,7 @@
         align-items: center;
         padding-top: 20px;
     }
+
     .container {
         background: #ffffff;
         padding: 30px;
@@ -23,16 +25,19 @@
         width: 700px;
         text-align: center;
     }
+
     h2 {
         margin-bottom: 20px;
         color: #333;
     }
+
     .table-container {
         overflow-x: auto;
         border-radius: 8px;
         box-shadow: 0 3px 6px rgba(0, 0, 0, 0.1);
         width: 100%;
     }
+
     table {
         width: 100%;
         border-collapse: collapse;
@@ -40,24 +45,30 @@
         border-radius: 8px;
         overflow: hidden;
     }
-    th, td {
+
+    th,
+    td {
         padding: 12px;
         text-align: center;
         color: black;
         border-bottom: 1px solid #ddd;
     }
+
     th {
         background-color: #007bff;
         color: white;
         font-weight: bold;
     }
+
     tr:nth-child(even) {
         background-color: #f9f9f9;
     }
+
     tr:hover {
         background-color: #f1f1f1;
         transition: 0.3s;
     }
+
     .form-container {
         background: #ffffff;
         padding: 30px;
@@ -65,17 +76,21 @@
         box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
         width: 700px;
         text-align: center;
-        margin-top: 30px; /* Creates space between the two sections */
+        margin-top: 30px;
+        /* Creates space between the two sections */
     }
+
     .form-container h2 {
         color: #333;
         margin-bottom: 15px;
     }
+
     label {
         font-size: 14px;
         color: #333;
         margin-right: 5px;
     }
+
     input[type="number"] {
         padding: 8px;
         border-radius: 5px;
@@ -83,6 +98,7 @@
         width: 50px;
         text-align: center;
     }
+
     .btn1 {
         display: block;
         margin: 15px auto;
@@ -94,16 +110,19 @@
         cursor: pointer;
         width: 15%;
     }
+
     .btn:hover {
         background-color: #0056b3;
     }
 </style>
+
 <body>
     <div class="sidebar">
         <h3>Welcome, {{ principal_name }}</h3>
         <ul>
             <li><a href="{{ url_for('add_admin') }}">Add Admin</a></li>
             <li><a href="{{ url_for('remove_admin') }}">Remove Admin</a></li>
+            <li><a target="_blank" href="{{ url_for('registeredStudents') }}">Registered Students</a></li>
             <li><a href="{{ url_for('principal_dashboard') }}">Dashboard</a></li>
             <li><a href="{{ url_for('logout') }}" class="logout">Logout</a></li>
         </ul>
@@ -142,9 +161,15 @@
         <h2>Enable/Disable Registration</h2>
         <form action="{{ url_for('update_registration') }}" method="post">
             <label for="semester">Semester :</label>
-            <input type="number" name="semester" id="semester" required> <br>
-            <label for="is_open">Enable </label>
-            <input type="checkbox" name="is_open" id="is_open">
+            <input type="number" name="semester" id="semester" required> <br><br>
+
+            <input type="radio" name="is_open" value="1" id="enable">
+            <label for="enable">Enable</label>
+            
+            <input type="radio" name="is_open" value="0" id="disable">
+            <label for="disable">Disable</label>
+
+            <br><br>
             <button type="submit" class="btn1">Update</button>
         </form>
     </div>
