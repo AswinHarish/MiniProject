@@ -58,30 +58,15 @@
         background-color: #f1f1f1;
         transition: 0.3s;
     }
-    .download-btn {
-                display: inline-block;
-                padding: 10px 20px;
-                background-color: #007bff;
-                color: white;
-                font-size: 16px;
-                font-weight: bold;
-                text-decoration: none;
-                border-radius: 25px;
-                transition: background 0.3s ease;
-                border: none;
-                cursor: pointer;
-            }
-        
-            .download-btn:hover {
-                background-color: #0056b3;
-            }
 </style>
 <body>
     <div class="sidebar">
-        <h3>Welcome, {{ hod_name }}</h3>
+        <h3>Welcome, {{ principal_name }}</h3>
         <ul>
-            <li><a href="{{ url_for('pending_request') }}">Pending Requests</a></li>
-            <li><a href="{{ url_for('registeredStudents') }}">Dashboard</a></li>
+            <li><a href="{{ url_for('add_admin') }}">Add Admin</a></li>
+            <li><a href="{{ url_for('remove_admin') }}">Remove Admin</a></li>
+            <li><a href="{{ url_for('rgStudents') }}">Registered Students</a></li>
+            <li><a href="{{ url_for('principal_dashboard') }}">Dashboard</a></li>
             <li><a href="{{ url_for('logout') }}" class="logout">Logout</a></li>
         </ul>
     </div>
@@ -89,7 +74,6 @@
     <div class="container">
         <div class="table-container">
             <h2>Registered Students</h2>
-            
             <table>
                 <thead>
                     <tr>
@@ -102,7 +86,7 @@
                     </tr>
                 </thead>
                 <tbody>
-                    {% for student in registered_students %}
+                    {% for student in students %}
                     <tr>
                         <td>{{ student.Name }}</td>
                         <td>{{ student.AdmnNo }}</td>
@@ -111,52 +95,10 @@
                         <td>{{ student.Phone }}</td>
                         <td>{{ student.SubmittedAt }}</td>
                     </tr>
-                    {% else %}
-                    <tr>
-                        <td colspan="6">No registered students found.</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table><br>
-            
-        </div>  <br>
-        <a href="{{ url_for('download_registered_students') }}" class="download-btn">
-            📥 Download
-        </a>
-    </div>
-    
-    <br>
-    <!-- New Table for Unregistered Students -->
-    <div class="container">
-        <div class="table-container">
-            <h2>Students Who Have Not Completed Registration</h2>
-            <table>
-                <thead>
-                    <tr>
-                        <th>Name</th>
-                        <th>Admission No</th>
-                        <th>Semester</th>
-                        <th>University Reg</th>
-                        <th>Phone</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for student in unregistered_students %}
-                    <tr>
-                        <td>{{ student.Name }}</td>
-                        <td>{{ student.AdmnNo }}</td>
-                        <td>{{ student.Sem }}</td>
-                        <td>{{ student.UniReg }}</td>
-                        <td>{{ student.Phone }}</td>
-                    </tr>
-                    {% else %}
-                    <tr>
-                        <td colspan="5">All students have completed registration.</td>
-                    </tr>
                     {% endfor %}
                 </tbody>
             </table>
         </div>        
-    </div>    
+    </div>
 </body>
 </html>

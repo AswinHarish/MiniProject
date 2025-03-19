@@ -1,6 +1,9 @@
 import sqlite3
-from flask import Flask, render_template, request, redirect, url_for, session, flash
+from flask import Flask, render_template, request, redirect, url_for, session, flash, send_file
 from datetime import datetime
+from reportlab.lib.pagesizes import A4
+from reportlab.pdfgen import canvas
+import io
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'your_secret_key'  # Change this to a secure key
@@ -100,7 +103,7 @@ def registeredStudents():
         return redirect(url_for('admin_login'))
 
     db = get_db_connection()
-    db.row_factory = sqlite3.Row  # Fetch results as dictionaries
+    db.row_factory = sqlite3.Row
     cursor = db.cursor()
 
     # Fetch admin details
@@ -113,31 +116,54 @@ def registeredStudents():
 
     admin_name = admin['name']
 
-    # Fetch students who have completed registration with 'Accepted' status
+    # Fetch students who have completed registration with 'Approved' status
     cursor.execute("""
         SELECT s.Name, s.AdmnNo, s.Sem, s.UniReg, s.Phone, c.SubmittedAt
         FROM completedregistration c
         JOIN Students s ON c.AdmnNo = s.AdmnNo
         WHERE c.Status = 'Approved'
     """)
-    
-    students = cursor.fetchall()
+    registered_students = cursor.fetchall()
 
     # Format the 'SubmittedAt' date
-    formatted_students = []
-    for student in students:
-        formatted_students.append({
+    formatted_registered_students = [
+        {
             "Name": student["Name"],
             "AdmnNo": student["AdmnNo"],
             "Sem": student["Sem"],
             "UniReg": student["UniReg"],
             "Phone": student["Phone"],
             "SubmittedAt": datetime.strptime(student["SubmittedAt"], '%Y-%m-%d %H:%M:%S').strftime('%d-%m-%Y %I:%M %p')
-        })
+        }
+        for student in registered_students
+    ]
+
+    # Fetch students who have not completed registration
+    cursor.execute("""
+        SELECT s.Name, s.AdmnNo, s.Sem, s.UniReg, s.Phone
+        FROM Students s
+        LEFT JOIN completedregistration c ON s.AdmnNo = c.AdmnNo
+        WHERE c.AdmnNo IS NULL OR c.Status != 'Approved'
+    """)
+    unregistered_students = cursor.fetchall()
+
+    formatted_unregistered_students = [
+        {
+            "Name": student["Name"],
+            "AdmnNo": student["AdmnNo"],
+            "Sem": student["Sem"],
+            "UniReg": student["UniReg"],
+            "Phone": student["Phone"]
+        }
+        for student in unregistered_students
+    ]
 
     db.close()
 
-    return render_template('registeredStudents.html', hod_name=admin_name, students=formatted_students)
+    return render_template('registeredStudents.html', hod_name=admin_name, 
+                           registered_students=formatted_registered_students, 
+                           unregistered_students=formatted_unregistered_students)
+
 
 # Route: Admin Dashboard
 @app.route('/admin_dashboard')
@@ -482,6 +508,16 @@ def pending_request():
     
     pending_students = cursor.fetchall()
 
+    # Fetch admin details
+    cursor.execute("SELECT name, role FROM Admin WHERE id = ?", (session['admin_id'],))
+    admin = cursor.fetchone()
+
+    if not admin:
+        flash("Admin not found!", "danger")
+        return redirect(url_for('admin_login'))
+
+    admin_name = admin['name']
+
     # Format SubmittedAt for display
     formatted_students = []
     for student in pending_students:
@@ -497,7 +533,7 @@ def pending_request():
 
     db.close()
     
-    return render_template('pending_request.html', students=formatted_students)
+    return render_template('pending_request.html', students=formatted_students, hod_name=admin_name)
 
 #Route: Approving by hod
 @app.route('/approve_registration/<admn_no>', methods=['POST'])
@@ -521,6 +557,113 @@ def approve_registration(admn_no):
     flash("Registration approved successfully! Student moved to the next semester.", "success")
     return redirect(url_for('pending_request'))
 
+#Route: for principal to see completed student list
+@app.route('/rgStudents')
+def rgStudents():
+    if 'admin_id' not in session:
+        flash("Please log in first!", "warning")
+        return redirect(url_for('admin_login'))
+
+    db = get_db_connection()
+    db.row_factory = sqlite3.Row  # Fetch results as dictionaries
+    cursor = db.cursor()
+
+    # Fetch admin details
+    cursor.execute("SELECT name, role FROM Admin WHERE id = ?", (session['admin_id'],))
+    admin = cursor.fetchone()
+
+    if not admin:
+        flash("Admin not found!", "danger")
+        return redirect(url_for('admin_login'))
+
+    admin_name = admin['name']
+
+    # Fetch students who have completed registration with 'Accepted' status
+    cursor.execute("""
+        SELECT s.Name, s.AdmnNo, s.Sem, s.UniReg, s.Phone, c.SubmittedAt
+        FROM completedregistration c
+        JOIN Students s ON c.AdmnNo = s.AdmnNo
+        WHERE c.Status = 'Approved'
+    """)
+    
+    students = cursor.fetchall()
+
+    # Format the 'SubmittedAt' date
+    formatted_students = []
+    for student in students:
+        formatted_students.append({
+            "Name": student["Name"],
+            "AdmnNo": student["AdmnNo"],
+            "Sem": student["Sem"],
+            "UniReg": student["UniReg"],
+            "Phone": student["Phone"],
+            "SubmittedAt": datetime.strptime(student["SubmittedAt"], '%Y-%m-%d %H:%M:%S').strftime('%d-%m-%Y %I:%M %p')
+        })
+
+    db.close()
+
+    return render_template('rgStudents.html', principal_name=admin_name, students=formatted_students)
+
+#Route: Download the registered student list as pdf
+@app.route('/download_registered_students')
+def download_registered_students():
+    if 'admin_id' not in session:
+        flash("Please log in first!", "warning")
+        return redirect(url_for('admin_login'))
+
+    db = get_db_connection()
+    db.row_factory = sqlite3.Row
+    cursor = db.cursor()
+
+    # Fetch registered students
+    cursor.execute("""
+        SELECT s.Name, s.AdmnNo, s.Sem, s.UniReg, s.Phone, c.SubmittedAt
+        FROM completedregistration c
+        JOIN Students s ON c.AdmnNo = s.AdmnNo
+        WHERE c.Status = 'Approved'
+    """)
+    students = cursor.fetchall()
+    db.close()
+
+    # Create PDF
+    buffer = io.BytesIO()
+    pdf = canvas.Canvas(buffer, pagesize=A4)
+    pdf.setTitle("Registered Students")
+
+    # Header
+    pdf.setFont("Helvetica-Bold", 14)
+    pdf.drawString(200, 800, "Registered Students List")
+
+    # Table Headers
+    pdf.setFont("Helvetica-Bold", 10)
+    headers = ["Name", "Admission No", "Semester", "Uni Reg", "Phone", "Submitted At"]
+    x_positions = [50, 150, 250, 320, 400, 480]
+    y_position = 780
+
+    for i, header in enumerate(headers):
+        pdf.drawString(x_positions[i], y_position, header)
+
+    # Table Data
+    pdf.setFont("Helvetica", 10)
+    y_position -= 20  # Move down
+
+    for student in students:
+        pdf.drawString(x_positions[0], y_position, student["Name"])
+        pdf.drawString(x_positions[1], y_position, str(student["AdmnNo"]))
+        pdf.drawString(x_positions[2], y_position, str(student["Sem"]))
+        pdf.drawString(x_positions[3], y_position, student["UniReg"])
+        pdf.drawString(x_positions[4], y_position, student["Phone"])
+        pdf.drawString(x_positions[5], y_position, student["SubmittedAt"])
+        y_position -= 20  # Move down
+
+        if y_position < 50:  # New page if needed
+            pdf.showPage()
+            y_position = 780
+
+    pdf.save()
+    buffer.seek(0)
+
+    return send_file(buffer, as_attachment=True, download_name="Registered_Students.pdf", mimetype="application/pdf")
 
 # Route: Logout (For Both Students & Admins)
 @app.route('/logout')
